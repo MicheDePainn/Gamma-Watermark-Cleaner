@@ -25,7 +25,7 @@ Aucune dépendance externe requise (utilise uniquement la bibliothèque standard
 1. **Télécharge ou clone ce dépôt :**
 
    ```bash
-   git clone https://github.com/ton-utilisateur/nettoyeur-pptx.git
+   git clone https://github.com/MicheDePainn/Gamma-Watermark-Cleaner-.pptx
    cd nettoyeur-pptx
    ```
 
