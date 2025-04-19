@@ -3,10 +3,82 @@ import os
 import shutil
 import threading
 import tkinter as tk
-from tkinter import filedialog, messagebox, StringVar
+from tkinter import filedialog, messagebox, StringVar, BooleanVar
 from tkinter import ttk
 import xml.etree.ElementTree as ET
 from glob import glob
+import sys
+import ctypes
+import configparser
+
+try:
+    from win32com.client import Dispatch
+except ImportError:
+    root = tk.Tk()
+    root.withdraw()
+    messagebox.showerror(
+        "Module manquant",
+        "Le module 'pywin32' est requis pour créer le raccourci.\n\n"
+        "Ouvre une console et tape :\n\npip install pywin32\n\n"
+        "Puis :\npython -m pywin32_postinstall -install"
+    )
+    raise SystemExit
+
+def creer_raccourci_si_voulu():
+    appdata = os.getenv("APPDATA")
+    config_dir = os.path.join(appdata, "NettoyeurGamma")
+    os.makedirs(config_dir, exist_ok=True)
+    config_path = os.path.join(config_dir, "config.ini")
+
+    raccourci_dir = os.path.join(appdata, r"Microsoft\Windows\Start Menu\Programs\Scripts")
+    os.makedirs(raccourci_dir, exist_ok=True)
+    raccourci_path = os.path.join(raccourci_dir, "Nettoyeur Gamma.lnk")
+
+    config = configparser.ConfigParser()
+    if os.path.exists(config_path):
+        config.read(config_path)
+        if config.getboolean("prefs", "ne_plus_demander", fallback=False):
+            return
+
+    if os.path.exists(raccourci_path):
+        return
+
+    def demander_creation():
+        fen = tk.Tk()
+        fen.title("Créer un raccourci")
+        fen.geometry("350x120")
+        fen.resizable(False, False)
+
+        var_ne_plus = BooleanVar(value=False)
+
+        ttk.Label(fen, text="Voulez-vous créer un raccourci dans le menu Démarrer ?").pack(pady=10)
+        ttk.Checkbutton(fen, text="Ne plus afficher ce message", variable=var_ne_plus).pack()
+
+        btns = ttk.Frame(fen)
+        btns.pack(pady=10)
+        ttk.Button(btns, text="Oui", command=lambda: (fen.quit(), fen.destroy(), setattr(sys, "_create_shortcut", True), setattr(sys, "_never_ask_again", var_ne_plus.get()))).pack(side="left", padx=10)
+        ttk.Button(btns, text="Non", command=lambda: (fen.quit(), fen.destroy(), setattr(sys, "_create_shortcut", False), setattr(sys, "_never_ask_again", var_ne_plus.get()))).pack(side="left", padx=10)
+
+        fen.mainloop()
+
+    demander_creation()
+
+    if getattr(sys, "_never_ask_again", False):
+        config["prefs"] = {"ne_plus_demander": "true"}
+        with open(config_path, "w") as f:
+            config.write(f)
+
+    if getattr(sys, "_create_shortcut", False):
+        shell = Dispatch('WScript.Shell')
+        raccourci = shell.CreateShortCut(raccourci_path)
+        if getattr(sys, 'frozen', False):
+            raccourci.Targetpath = sys.executable
+            raccourci.WorkingDirectory = os.path.dirname(sys.executable)
+        else:
+            raccourci.Targetpath = os.path.abspath(__file__)
+            raccourci.WorkingDirectory = os.path.dirname(os.path.abspath(__file__))
+        raccourci.IconLocation = raccourci.Targetpath
+        raccourci.save()
 
 def supprimer_blocs_pic_preencoded(layout_dir):
     supprimés = 0
@@ -32,7 +104,6 @@ def supprimer_blocs_pic_preencoded(layout_dir):
     return supprimés
 
 def traiter_pptx(fichier_entree, fichier_sortie, progress_callback=None):
-    steps = ["Décompression", "Suppression blocs XML", "Recompression", "Nettoyage"]
     base_temp = os.path.splitext(os.path.basename(fichier_entree))[0]
     temp_dir = os.path.join(os.path.dirname(fichier_entree), f"{base_temp}_temp_process")
     try:
@@ -142,6 +213,7 @@ class NettoyeurApp(ttk.Frame):
         self.status_label.config(text="Prêt.")
 
 if __name__ == "__main__":
+    creer_raccourci_si_voulu()
     root = tk.Tk()
     app = NettoyeurApp(root)
     root.mainloop()
