@@ -22,18 +22,13 @@ Aucune dépendance externe requise (utilise uniquement la bibliothèque standard
 
 ## 🚀 Utilisation
 
-1. **Télécharge ou clone ce dépôt :**
+1. **Télécharge la dernière release :**
 
-   ```bash
-   git clone https://github.com/MicheDePainn/Gamma-Watermark-Cleaner-.pptx
-   cd nettoyeur-pptx
-   ```
+   https://github.com/MicheDePainn/Gamma-Watermark-Cleaner-pptx/releases
 
 2. **Lance l'application :**
 
-   ```bash
-   python nettoyeur.py
-   ```
+   Double clic sur main.exe
 
 3. **Dans l'application :**
    - Sélectionne un fichier `.pptx` d'entrée.
