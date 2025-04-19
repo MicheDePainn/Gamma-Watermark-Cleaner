@@ -14,6 +14,7 @@ Il dispose d'une interface graphique simple basée sur Tkinter.
 ## 🖥️ Prérequis
 
 - Python 3.7+
+- pywin32
 - Système d'exploitation : Windows, Linux ou macOS
 
 ## 📦 Dépendances
