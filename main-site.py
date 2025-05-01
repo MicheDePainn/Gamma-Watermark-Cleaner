@@ -65,15 +65,12 @@ st.set_page_config(page_title="Nettoyeur de filigramme Gamma", page_icon="🧹")
 st.title("🧹 Nettoyeur de filigramme Gamma (.pptx)")
 
 fichier_entree = st.file_uploader("Choisissez un fichier PPTX d'entrée", type="pptx")
-fichier_sortie_nom = st.text_input("Nom du fichier PPTX de sortie", "")
+fichier_sortie_nom = st.text_input("Nom du fichier PPTX de sortie", "fichier_modifie.pptx")
 
 progress_bar = st.empty()
 status = st.empty()
 
-if fichier_entree:
-    fichier_sortie_nom = os.path.splitext(fichier_entree.name)[0] + "_modifie.pptx"
-    st.text_input("Nom du fichier PPTX de sortie", fichier_sortie_nom)
-
+if fichier_entree and fichier_sortie_nom:
     if st.button("Lancer le nettoyage"):
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as tmp_file:
@@ -107,4 +104,4 @@ if fichier_entree:
         except Exception as e:
             st.error(f"Une erreur est survenue : {str(e)}")
 else:
-    st.warning("Veuillez choisir un fichier d'entrée.")
+    st.warning("Veuillez choisir un fichier d'entrée et spécifier un fichier de sortie.")
