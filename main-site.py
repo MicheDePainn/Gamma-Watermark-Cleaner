@@ -72,41 +72,39 @@ status = st.empty()
 
 if fichier_entree:
     fichier_sortie_nom = os.path.splitext(fichier_entree.name)[0] + "_modifie.pptx"
-    
-    st.text_input("Nom du fichier PPTX de sortie", fichier_sortie_nom, key="output_file")
+    st.text_input("Nom du fichier PPTX de sortie", fichier_sortie_nom)
 
-    if fichier_sortie_nom:
-        if st.button("Lancer le nettoyage"):
-            try:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as tmp_file:
-                    tmp_file.write(fichier_entree.getvalue())
-                    tmp_file_path = tmp_file.name
+    if st.button("Lancer le nettoyage"):
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as tmp_file:
+                tmp_file.write(fichier_entree.getvalue())
+                tmp_file_path = tmp_file.name
 
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as tmp_out_file:
-                    fichier_sortie_path = tmp_out_file.name
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as tmp_out_file:
+                fichier_sortie_path = tmp_out_file.name
 
-                def maj_progression(step, message):
-                    progress_bar.progress(step / 4)
-                    status.info(message)
+            def maj_progression(step, message):
+                progress_bar.progress(step / 4)
+                status.info(message)
 
-                bloc_count = traiter_pptx(
-                    tmp_file_path,
-                    fichier_sortie_path,
-                    maj_progression
+            bloc_count = traiter_pptx(
+                tmp_file_path,
+                fichier_sortie_path,
+                maj_progression
+            )
+
+            with open(fichier_sortie_path, "rb") as f:
+                st.download_button(
+                    label=f"📥 Télécharger ({bloc_count} bloc(s) supprimé(s))",
+                    data=f.read(),
+                    file_name=fichier_sortie_nom,
+                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
                 )
 
-                with open(fichier_sortie_path, "rb") as f:
-                    st.download_button(
-                        label=f"📥 Télécharger ({bloc_count} bloc(s) supprimé(s))",
-                        data=f.read(),
-                        file_name=fichier_sortie_nom,
-                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                    )
+            os.remove(tmp_file_path)
+            os.remove(fichier_sortie_path)
 
-                os.remove(tmp_file_path)
-                os.remove(fichier_sortie_path)
-
-            except Exception as e:
-                st.error(f"Une erreur est survenue : {str(e)}")
+        except Exception as e:
+            st.error(f"Une erreur est survenue : {str(e)}")
 else:
     st.warning("Veuillez choisir un fichier d'entrée.")
