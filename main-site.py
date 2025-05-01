@@ -65,43 +65,48 @@ st.set_page_config(page_title="Nettoyeur de filigramme Gamma", page_icon="🧹")
 st.title("🧹 Nettoyeur de filigramme Gamma (.pptx)")
 
 fichier_entree = st.file_uploader("Choisissez un fichier PPTX d'entrée", type="pptx")
-fichier_sortie_nom = st.text_input("Nom du fichier PPTX de sortie", "fichier_modifie.pptx")
+fichier_sortie_nom = st.text_input("Nom du fichier PPTX de sortie", "")
 
 progress_bar = st.empty()
 status = st.empty()
 
-if fichier_entree and fichier_sortie_nom:
-    if st.button("Lancer le nettoyage"):
-        try:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as tmp_file:
-                tmp_file.write(fichier_entree.getvalue())
-                tmp_file_path = tmp_file.name
+if fichier_entree:
+    fichier_sortie_nom = os.path.splitext(fichier_entree.name)[0] + "_modifie.pptx"
+    
+    st.text_input("Nom du fichier PPTX de sortie", fichier_sortie_nom, key="output_file")
 
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as tmp_out_file:
-                fichier_sortie_path = tmp_out_file.name
+    if fichier_sortie_nom:
+        if st.button("Lancer le nettoyage"):
+            try:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as tmp_file:
+                    tmp_file.write(fichier_entree.getvalue())
+                    tmp_file_path = tmp_file.name
 
-            def maj_progression(step, message):
-                progress_bar.progress(step / 4)
-                status.info(message)
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as tmp_out_file:
+                    fichier_sortie_path = tmp_out_file.name
 
-            bloc_count = traiter_pptx(
-                tmp_file_path,
-                fichier_sortie_path,
-                maj_progression
-            )
+                def maj_progression(step, message):
+                    progress_bar.progress(step / 4)
+                    status.info(message)
 
-            with open(fichier_sortie_path, "rb") as f:
-                st.download_button(
-                    label=f"📥 Télécharger ({bloc_count} bloc(s) supprimé(s))",
-                    data=f.read(),
-                    file_name=fichier_sortie_nom,
-                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                bloc_count = traiter_pptx(
+                    tmp_file_path,
+                    fichier_sortie_path,
+                    maj_progression
                 )
 
-            os.remove(tmp_file_path)
-            os.remove(fichier_sortie_path)
+                with open(fichier_sortie_path, "rb") as f:
+                    st.download_button(
+                        label=f"📥 Télécharger ({bloc_count} bloc(s) supprimé(s))",
+                        data=f.read(),
+                        file_name=fichier_sortie_nom,
+                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                    )
 
-        except Exception as e:
-            st.error(f"Une erreur est survenue : {str(e)}")
+                os.remove(tmp_file_path)
+                os.remove(fichier_sortie_path)
+
+            except Exception as e:
+                st.error(f"Une erreur est survenue : {str(e)}")
 else:
-    st.warning("Veuillez choisir un fichier d'entrée et spécifier un fichier de sortie.")
+    st.warning("Veuillez choisir un fichier d'entrée.")
