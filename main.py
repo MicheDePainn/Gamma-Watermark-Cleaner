@@ -5,10 +5,10 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, StringVar, BooleanVar
 from tkinter import ttk
-import xml.etree.ElementTree as ET
+import hashlib
 from glob import glob
 import sys
-import ctypes
+import time
 import configparser
 
 try:
@@ -23,6 +23,7 @@ except ImportError:
         "Puis :\npython -m pywin32_postinstall -install"
     )
     raise SystemExit
+
 
 def creer_raccourci_si_voulu():
     appdata = os.getenv("APPDATA")
@@ -80,28 +81,35 @@ def creer_raccourci_si_voulu():
         raccourci.IconLocation = raccourci.Targetpath
         raccourci.save()
 
-def supprimer_blocs_pic_preencoded(layout_dir):
+
+def supprimer_image_hash(media_dir):
     supprimés = 0
-    ns = {
-        'p': 'http://schemas.openxmlformats.org/presentationml/2006/main',
-        'a': 'http://schemas.openxmlformats.org/drawingml/2006/main',
-        'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
-    }
-    for fichier in glob(os.path.join(layout_dir, "*.xml")):
-        tree = ET.parse(fichier)
-        root = tree.getroot()
-        modifié = False
-        for pic in root.findall(".//p:pic", ns):
-            cNvPr = pic.find(".//p:nvPicPr/p:cNvPr", ns)
-            if cNvPr is not None and cNvPr.get("descr") == "preencoded.png":
-                parent = next((elem for elem in root.iter() if pic in list(elem)), None)
-                if parent is not None:
-                    parent.remove(pic)
-                    supprimés += 1
-                    modifié = True
-        if modifié:
-            tree.write(fichier, encoding='utf-8', xml_declaration=True)
+    hash_cible = "591accd6ecdb20315c1ce0017f70029388994ee11bc6fba05a1a53441c6c0240".lower()
+
+    for fichier in glob(os.path.join(media_dir, "*.png")):
+        try:
+            with open(fichier, "rb") as f:
+                contenu = f.read()
+            sha256 = hashlib.sha256(contenu).hexdigest()
+
+            if sha256 == hash_cible:
+                # Libérer la mémoire avant suppression
+                del contenu
+                time.sleep(0.05)  # Laisse le temps au système de relâcher le fichier
+                os.remove(fichier)
+                supprimés += 1
+
+        except PermissionError:
+            # Si Windows bloque encore, on réessaie
+            try:
+                time.sleep(0.2)
+                os.remove(fichier)
+                supprimés += 1
+            except Exception as e:
+                print(f"Impossible de supprimer {fichier}: {e}")
+
     return supprimés
+
 
 def traiter_pptx(fichier_entree, fichier_sortie, progress_callback=None):
     base_temp = os.path.splitext(os.path.basename(fichier_entree))[0]
@@ -111,11 +119,11 @@ def traiter_pptx(fichier_entree, fichier_sortie, progress_callback=None):
         with zipfile.ZipFile(fichier_entree, 'r') as zip_ref:
             zip_ref.extractall(temp_dir)
 
-        layout_dir = os.path.join(temp_dir, 'ppt', 'slideLayouts')
-        bloc_count = 0
-        if os.path.exists(layout_dir):
-            if progress_callback: progress_callback(2, "Suppression de blocs XML...")
-            bloc_count = supprimer_blocs_pic_preencoded(layout_dir)
+        media_dir = os.path.join(temp_dir, 'ppt', 'media')
+        img_count = 0
+        if os.path.exists(media_dir):
+            if progress_callback: progress_callback(2, "Suppression des images ciblées...")
+            img_count = supprimer_image_hash(media_dir)
 
         if progress_callback: progress_callback(3, "Recompression du PPTX...")
         with zipfile.ZipFile(fichier_sortie, 'w', zipfile.ZIP_DEFLATED) as zip_out:
@@ -128,12 +136,13 @@ def traiter_pptx(fichier_entree, fichier_sortie, progress_callback=None):
         if progress_callback: progress_callback(4, "Nettoyage des fichiers temporaires...")
         shutil.rmtree(temp_dir)
 
-        return bloc_count
+        return img_count
 
     except Exception as e:
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
         raise
+
 
 class NettoyeurApp(ttk.Frame):
     def __init__(self, master):
@@ -194,23 +203,24 @@ class NettoyeurApp(ttk.Frame):
 
     def run_task(self):
         try:
-            bloc_count = traiter_pptx(
+            img_count = traiter_pptx(
                 self.fichier_entree.get(),
                 self.fichier_sortie.get(),
                 self.update_progress
             )
-            self.show_bilan(bloc_count)
+            self.show_bilan(img_count)
         except Exception as e:
             messagebox.showerror("Erreur", str(e))
             self.status_label.config(text="Erreur lors du traitement.")
         finally:
             self.run_btn.state(['!disabled'])
 
-    def show_bilan(self, bloc_count):
-        result = messagebox.showinfo(
-            "Terminé", f"{bloc_count} bloc(s) supprimé(s) avec succès.")
+    def show_bilan(self, img_count):
+        messagebox.showinfo(
+            "Terminé", f"{img_count} image(s) supprimée(s) avec succès.")
         self.progress['value'] = 0
         self.status_label.config(text="Prêt.")
+
 
 if __name__ == "__main__":
     creer_raccourci_si_voulu()
